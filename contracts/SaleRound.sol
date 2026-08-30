@@ -358,7 +358,14 @@ contract SaleRound is ReentrancyGuard {
     function _readEthUsd() private view returns (bool ok, int256 price) {
         try ethUsdFeed.latestRoundData() returns (uint80, int256 answer, uint256, uint256 updatedAt, uint80) {
             if (answer <= 0) return (false, 0);
-            if (updatedAt == 0 || block.timestamp - updatedAt > MAX_ORACLE_AGE) return (false, 0);
+            // A feed timestamped in the future would underflow the age check
+            // below and revert. That revert is NOT caught by the catch clause
+            // — it happens in the success branch — so `ethLaneOpen()` would
+            // panic instead of returning false, which is the one thing this
+            // function promises never to do. An impossible timestamp is a
+            // broken feed: fail closed, like every other bad reading. (S-1)
+            if (updatedAt == 0 || updatedAt > block.timestamp) return (false, 0);
+            if (block.timestamp - updatedAt > MAX_ORACLE_AGE) return (false, 0);
             return (true, answer);
         } catch {
             return (false, 0);

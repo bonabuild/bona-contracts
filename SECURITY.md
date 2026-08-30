@@ -11,7 +11,7 @@ What was done instead — all published, all reproducible:
 
 | Mitigation | Where |
 |---|---|
-| 186 automated tests, including tests asserting the *absence* of mint / owner / pause / blacklist | `test/` — run `npm test` |
+| 187 automated tests, including tests asserting the *absence* of mint / owner / pause / blacklist | `test/` — run `npm test` |
 | 22-step full lifecycle rehearsal, run on Base Sepolia | `scripts/e2e-round.js` |
 | Internal adversarial review, with findings and fixes | [`docs/audit-status.md`](docs/audit-status.md) |
 | Verified source on Basescan, byte for byte | links in the README |

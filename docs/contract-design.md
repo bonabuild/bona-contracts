@@ -146,7 +146,7 @@ Stated here rather than discovered later. Full detail in
 
 ## The test suite is a claim registry
 
-186 tests. The convention: **every safety claim made in these documents
+187 tests. The convention: **every safety claim made in these documents
 or on the website has a test here**, and the forbidden-function tests
 inspect the compiled ABI, so the claim is about the artifact rather than
 the intent. If a test is removed, the public claim it backs must be

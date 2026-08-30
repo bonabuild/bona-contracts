@@ -257,6 +257,18 @@ describe("SaleRound", function () {
       ).to.be.revertedWithCustomError(round, "EthLaneBroken");
     });
 
+    it("fails closed on a feed timestamped in the future, rather than panicking (S-1)", async function () {
+      // A future updatedAt would underflow `block.timestamp - updatedAt`.
+      // That revert happens in the try's success branch, so the catch does
+      // not absorb it: ethLaneOpen() would panic instead of returning false.
+      const now = await time.latest();
+      await feed.setStale(now + 3600);
+      expect(await round.ethLaneOpen()).to.equal(false);
+      await expect(
+        round.connect(alice).contributeEth({ value: ethers.parseEther("1") })
+      ).to.be.revertedWithCustomError(round, "EthLaneBroken");
+    });
+
     it("fails closed on a non-positive answer", async function () {
       await feed.setAnswer(0);
       expect(await round.ethLaneOpen()).to.equal(false);

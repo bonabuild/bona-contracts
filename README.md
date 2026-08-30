@@ -74,7 +74,7 @@ must be deleted in the same commit.
 
 ```bash
 npm install
-npm test          # 186 tests
+npm test          # 187 tests
 ```
 
 No configuration, no keys, no network needed. Tests run against a local
@@ -104,7 +104,7 @@ still free to act on. See [`SECURITY.md`](SECURITY.md).
 
 ```
 contracts/    5 contracts + mocks used only by tests
-test/         186 tests — the claim registry described above
+test/         187 tests — the claim registry described above
 scripts/      deploy, seat assignment, cost measurement,
               and the 22-step round rehearsal
 docs/         design reasoning and audit status
