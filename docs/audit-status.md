@@ -1,7 +1,7 @@
 # Audit status
 
-**Short version: not audited. Deployed anyway, and here is exactly why
-and what was done instead.**
+**Short version: not audited. Reviewed twice, with every finding published
+below, including the two that changed the design.**
 
 ---
 
@@ -10,130 +10,127 @@ and what was done instead.**
 | | |
 |---|---|
 | External professional audit | ❌ **Not done** |
-| Automated test suite | ✅ 187 tests |
-| Static analysis (Slither 0.11.6) | ✅ Run — 0 High, 3 Medium (all false positives) |
-| Full lifecycle rehearsal on testnet | ✅ 22 steps, Base Sepolia |
-| Internal adversarial review | ✅ Done, findings below |
-| Static analysis (Slither) | ✅ Run, findings triaged below |
-| Source verified on Basescan | ✅ All four deployed contracts |
+| Independent review | ✅ Done — three findings, all acted on |
+| Second review | ⏳ Arranged, not yet complete |
+| Automated test suite | ✅ 150 tests |
+| Static analysis (Slither) on every push | ✅ Build fails on any High finding |
+| Source verified on Basescan | ✅ All deployed contracts |
 
-## Why deployed before an audit
+## What is deployed and what is not
 
-Deploying the token, the vesting contracts and the request board costs
-almost nothing and holds no third-party money: the entire supply sits in
-the project multisig, vesting is funded by the multisig to the team's own
-addresses, and backing locks tokens that only ever return to whoever
-locked them. **Nobody else's money is at risk in any contract deployed
-today.**
+The two contracts a buyer would touch — `DirectSale` and `SaleVesting` —
+are **not deployed**. What is on-chain today holds no third-party money:
+the entire supply sits in the project multisig, team vesting is funded by
+the multisig to the team's own addresses, and request backing locks tokens
+that only ever return to whoever locked them.
 
-`SaleRound.sol` is the one that escrows buyers' money, and it is **not
-deployed.** That is the line: the audit gate sits in front of buyers'
-funds, not in front of our own.
+That is the line the audit gate sits on. It is in front of buyers' funds,
+not in front of our own.
+
+---
+
+## The independent review
+
+Three findings. All three concerned the same thing from different angles:
+whether a buyer could end up having paid without being able to claim.
+
+| ID | Severity | Where | Finding | Outcome |
+|---|---|---|---|---|
+| **F1** | High | RoundVesting | De-authorising a granter blocked buyers who had paid but not yet claimed. Their money was already settled to the treasury and their tokens were unreachable. Permanently | **Design changed** |
+| **F2** | High | RoundVesting | The 30M cap was checked inside `grant`, first come first served. Two sale contracts whose allocations overlapped the remaining capacity would both work until the pool ran low, then a buyer's grant would simply revert — with the money taken. It would have surfaced near exhaustion, which is when the most money has been taken | **Design changed** |
+| **F3** | Medium | SaleRound | After the 30-day settlement grace expired, buyers could refund — but the treasury could still settle, which flipped the status and killed the refund right. The published guarantee was that the multisig could delay but not keep. It could keep | **Contract removed** |
+
+The reviewer was right that F2 was the most important of the three, and
+for the reason they gave: it produces exactly the outcome the rest of this
+system is arranged to make impossible, and it does so silently and late.
+
+### What changed, and why it is more than a patch
+
+**F1 and F2 were fixed by replacing the contract, not editing it.**
+`RoundVesting` is retired; `SaleVesting` reserves capacity when a sale is
+authorised rather than checking a cap when a buyer claims. A sale draws
+only against its own reservation, so it can never be starved by another
+sale's activity, and the cap is enforced once — at reservation time, where
+a mistake is still free to fix. Releasing a reservation, which is how a
+sale gets stopped, cannot reach below what that sale has committed.
+
+**F3 was fixed by deleting the contract that had it.** `SaleRound`
+implemented time-boxed rounds with escrow, a floor and refunds. The
+funding model moved to a continuously open sale, so the contract had no
+remaining purpose, and a contract nobody plans to deploy is audit budget
+spent on nothing. It is in this repository's git history.
+
+**And the class of bug was designed out.** F1 and F3 are both only
+possible because a sale can take money in one transaction and settle the
+buyer's claim in another. `DirectSale` writes the vesting grant in the
+same call as the payment: either both happen or neither does. Three tests
+pay into a sale that cannot grant and assert the buyer's USDC never left
+their wallet.
+
+---
 
 ## The internal review
 
-Adversarial pass over all five contracts, run against the full test
-suite. Everything found is listed — including what was decided not to
-fix, because a review that only lists wins is marketing.
+Run before the independent one, over the contracts as they then stood.
+Everything found is listed, including what was decided not to fix, because
+a review that only lists wins is marketing.
+
+### Findings in code that still ships
 
 | ID | Severity | Contract | Finding | Status |
 |---|---|---|---|---|
-| M-1 | **Medium** | SaleRound | Refund did not un-sell: BONA stranded forever, and settlement bricked after any grace-window refund | **Fixed** + 2 regression tests |
-| L-1 | Low | TeamVesting, RoundVesting, SaleRound | An oversized duration permanently bricks a beneficiary (uint64 overflow reverts `vestedAmount`) | **Fixed** + 3 regression tests |
-| L-2 | Low | SaleRound | An underfunded round could settle — money taken, every claim reverting | **Fixed** + regression test |
-| I-1 | Info | SaleRound | The circuit breaker assumed 8 feed decimals without checking | **Fixed** + regression test |
-| I-2 | Info | SaleRound | The ETH lane cannot exactly fill the last dust of an allocation | Accepted, documented |
-| I-3 | Info | SaleRound | A Circle-blacklisted buyer's USDC refund reverts — their own funds only | Accepted, documented |
+| L-1 | Low | vesting contracts | An oversized duration permanently bricks a beneficiary (uint64 overflow reverts `vestedAmount`) | **Fixed**, carried into `SaleVesting`, plus a deployment-time check in `DirectSale` |
 | I-4 | Info | all | No pause anywhere: a bug cannot be halted, only survived | By design |
-| S-1 | Low | SaleRound | A feed timestamped in the future underflowed the age check, so `ethLaneOpen()` panicked instead of returning false | **Fixed** + regression test |
 
-**On I-4.** It reads like a missing safety feature and it is a
-deliberate choice. A pause is a lever, and a lever that can stop a round
-can also hold one hostage. The exits are built into the contracts
-instead: `markFailed()` is permissionless, `refund()` is permissionless,
-and a successful round left unsettled for 30 days becomes refundable
-regardless of what the multisig does or does not do.
+### Findings in `SaleRound`, which no longer exists
+
+M-1 (a refund left its BONA stranded and could brick settlement), L-2 (an
+underfunded round could settle), I-1 (the circuit breaker assumed 8 feed
+decimals), I-2 and I-3 (accepted dust and blacklist edge cases), and S-1
+(a feed timestamped in the future made `ethLaneOpen()` panic instead of
+returning false) were all fixed at the time and are all moot now: escrow,
+floors, refunds and the price oracle went with the contract.
+
+They are listed rather than quietly dropped because the reasoning still
+holds for anyone who reads the git history, and because a findings list
+that shrinks without explanation is not worth reading.
+
+**On I-4.** It reads like a missing safety feature and it is a deliberate
+choice. A pause is a lever, and a lever that can stop a sale can also hold
+one hostage. Stopping the sale is done instead with two ordinary
+transactions that carry no special privilege: the multisig takes back the
+sale's reserved capacity, or its BONA balance, or both.
+
+---
 
 ## Static analysis
 
-Slither 0.11.6, run across all five contracts with `node_modules` and the
-test mocks filtered out.
+Slither runs on every push and every pull request and **fails the build on
+any High-impact finding**. Medium and below are triaged by hand, because a
+build that fails on informational noise is a build nobody reads.
 
-**Result: 20 findings. 0 High. 3 Medium, all false positives.**
+The most useful thing to say about it is what it did not catch. During
+triage of a clean Slither run, reading the code by hand turned up S-1: a
+logic error in the success branch of a `try` block, which is not a shape
+any pattern matcher looks for. Static analysis finds shapes it has seen
+before. That is worth having and it is not worth trusting.
 
-| Impact | Count | Verdict |
-|---|---|---|
-| High | 0 | — |
-| Medium | 3 | All false positives — reasoning below |
-| Low | 11 | All `timestamp`: a time-boxed sale round compares against `block.timestamp` by design |
-| Informational | 6 | Naming convention on an interface's constant getters, low-level calls (the two deliberate ETH sends), constructor complexity |
-
-### The three Medium findings, and why each is not a bug
-
-**`incorrect-equality` in `reclaimUnsold()` — `amount == 0`.** The
-detector flags strict equality because comparing against a manipulable
-value can be griefed. Here the comparison is a "nothing to do" guard on a
-locally computed amount, and reverting on exactly zero is the intent.
-
-**`incorrect-equality` in `settle()` — `closedAt == 0`.** `closedAt` is a
-sentinel: zero means the round was never explicitly closed, so settlement
-backfills it with the deadline. Testing a sentinel for zero is what a
-sentinel is for.
-
-**`unused-return` in `_readEthUsd()`.** `latestRoundData()` returns five
-values and we destructure two: `answer` and `updatedAt`. The classic
-staleness check also compares `answeredInRound` against `roundId` — but
-Chainlink has deprecated `answeredInRound`, and adding a deprecated check
-would be cargo cult, not safety. Freshness is enforced by `updatedAt`
-against `MAX_ORACLE_AGE`, and the design bounds the damage anyway: the
-oracle answers one question (is the ETH lane within ±20% of the published
-reference), it can only ever close a lane, and all accounting is in BONA
-rather than USD, so no feed reading can corrupt the goal, floor or refund
-arithmetic.
-
-### What Slither did not find
-
-**S-1 was found by reading the code during triage, not by the tool** —
-which is the honest summary of what static analysis is worth.
-
-`_readEthUsd()` computed `block.timestamp - updatedAt`. A feed reporting
-a timestamp in the future underflows that subtraction and reverts. The
-revert happens in the success branch of the `try`, so the `catch` does
-**not** absorb it — meaning `ethLaneOpen()`, a view whose entire contract
-is to return `false` when the lane is shut, would panic instead.
-
-Fixed by treating an impossible timestamp as a broken feed and failing
-closed like every other bad reading. The regression test asserts the
-panic is gone; removing the fix makes it fail with
-`panic 0x11 (arithmetic overflow)`.
-
-This is the pattern-matcher's blind spot in one example: Slither finds
-shapes it has seen before, and a logic error in a `try` block's success
-branch is not one of them. It is also why the external audit gate stands.
+---
 
 ## What an audit still owes us
 
-An internal review is done by the people who wrote the code, which is
-precisely the wrong people to find the assumption they never questioned.
-An external audit is still required before any round after Round 0, and
-specifically for:
+A review by the people who wrote the code is done by precisely the wrong
+people to find the assumption they never questioned — and the independent
+review proved it, by finding two High-severity issues in a contract that
+had already passed an internal pass and shipped to mainnet.
 
-- `SaleRound.sol` end to end — it holds other people's money
-- Oracle handling under adversarial feed conditions
-- Cross-contract interaction between SaleRound and RoundVesting
-- Economic review of the round parameters, not just the code
+An external audit is still required before the sale opens at any
+meaningful size, and specifically for:
 
-## Round 0
-
-The first round is capped at **$2,500**, and the cap is enforced by the
-contract's allocation, not by a promise. Its purpose is to fund the
-audit. It is the only round that will ever run unaudited, and anyone
-offered it is told so in the same breath as the price.
-
-Worst case is bounded and stated up front: a critical bug in Round 0
-loses at most the escrow in Round 0.
-
-**Every round after it requires the published audit.**
+- `DirectSale` end to end — it takes other people's money
+- `SaleVesting`'s reservation and commitment arithmetic
+- The interaction between the two, which is where F1 and F2 lived
+- Economic review of the price and the caps, not just the code
 
 ---
 

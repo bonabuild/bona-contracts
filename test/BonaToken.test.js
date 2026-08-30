@@ -151,18 +151,32 @@ describe("BonaToken (BONA)", function () {
   });
 
   describe("Tokenomics allocation adds up", function () {
-    it("the six allocations sum to exactly the total supply", async function () {
+    /**
+     * The published allocation, asserted against the supply the contract
+     * actually minted. Four lines, and every one of them has a stated job:
+     * there is no unallocated remainder, which is the number an outside
+     * reader adds up first.
+     */
+    it("the four allocations sum to exactly the total supply", async function () {
       const allocations = {
-        saleRounds: ethers.parseUnits("30000000", 18), // 30%
-        contributors: ethers.parseUnits("30000000", 18), // 30%
-        treasury: ethers.parseUnits("15000000", 18), // 15%
-        impact: ethers.parseUnits("10000000", 18), // 10%
+        sale: ethers.parseUnits("60000000", 18), // 60%
+        contributorPrograms: ethers.parseUnits("15000000", 18), // 15%
+        liquidity: ethers.parseUnits("15000000", 18), // 15%
         team: ethers.parseUnits("10000000", 18), // 10%
-        liquidity: ethers.parseUnits("5000000", 18), // 5%
       };
 
       const sum = Object.values(allocations).reduce((a, b) => a + b, 0n);
       expect(sum).to.equal(TOTAL_SUPPLY);
+    });
+
+    it("the sale allocation matches the cap SaleVesting enforces", async function () {
+      const Vesting = await ethers.getContractFactory("SaleVesting");
+      const vesting = await Vesting.deploy(await token.getAddress(), treasury.address);
+      await vesting.waitForDeployment();
+
+      // The published 60% is not a promise in a document, it is a constant in
+      // a contract. If one changes without the other, this fails.
+      expect(await vesting.MAX_TOTAL()).to.equal(ethers.parseUnits("60000000", 18));
     });
   });
 });

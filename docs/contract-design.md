@@ -7,28 +7,27 @@ system; the contracts' own comments carry the per-function detail.
 
 ## The system
 
-Five contracts. One holds the asset, three hold it in place, one holds
-money for the length of a round.
+Five contracts. One holds the asset, two hold it in place, one records a
+signal, one sells.
 
 ```
 BonaToken ────────── the asset. 100M fixed, no admin surface at all
     │
     ├── TeamVesting ───── 5 seats x 2M, 36-month linear, tranche-funded
-    ├── RoundVesting ──── buyer grants, 6-month lock enforced here
+    ├── SaleVesting ───── buyer grants, 6-month lock enforced here
     ├── RequestBacking ── lock BONA behind a request; roadmap signal
     │
-    └── SaleRound ─────── one per round: fixed price, escrow, floor,
-                          refund, circuit breaker. Holds real money.
-                          Writes grants into RoundVesting on claim.
+    └── DirectSale ────── one published price, open continuously.
+                          Payment and grant in the same transaction.
 ```
 
 | Contract | Privileged address | What it can do | What it can **never** do |
 |---|---|---|---|
 | BonaToken | **none** | — | — |
 | TeamVesting | funder (multisig) | assign/vacate seats, fund tranches | move or claw back a funded tranche |
-| RoundVesting | funder (multisig) | authorise/revoke granter contracts | touch an existing grant |
+| SaleVesting | funder (multisig) | reserve capacity for a sale, release what it has not used | touch an existing grant |
 | RequestBacking | curator (multisig) | set a request's status label | move, freeze or reduce a lock |
-| SaleRound | treasury (multisig) | settle after the floor, reclaim **unsold** | touch buyer funds, change a term, pause |
+| DirectSale | treasury (multisig) | receive payments, take back unsold BONA | change the price, reach a buyer's tokens, pause |
 
 The pattern is uniform: **every privileged power is additive or
 informational. None can reach tokens someone else already holds.**
@@ -47,33 +46,39 @@ the source.
 
 ### 2. Design the failure case out, don't guard it
 
-A failed round must void its buyers' vesting. The obvious design — grant
-on contribution, cancel on failure — requires a cancellation power, which
-then also exists for successful rounds. Instead grants are created only
-**after** settlement, so a failed round has nothing to undo.
+The clearest example is the one an external review handed us. A sale that
+takes payment in one transaction and writes the buyer's vesting grant in
+another can fail in between, and when it does, the money is gone and the
+tokens are unreachable. Two of that review's three findings were instances
+of exactly that shape.
 
-The same move, repeatedly:
+`DirectSale` writes the grant in the same call as the payment. Either both
+happen or neither does. The failure is not guarded against; there is
+nowhere for it to occur.
+
+The same move appears elsewhere:
 
 | Instead of… | The design is… |
 |---|---|
 | revoke on a team member's departure | tranche funding — simply don't fund the next one |
 | freeze backing once a request is queued | never freeze — scarcity comes from a finite balance |
-| refunds approved by the multisig | escrow + permissionless `refund()` |
-| pushing grants to thousands of buyers | buyers pull their own, paying their own gas |
+| a pause switch on the sale | take back its capacity or its tokens; both are ordinary transactions |
+| a cap checked when a buyer claims | capacity reserved when the sale is authorised |
 
 ### 3. Constraints live in the contract, not in policy
 
-"Six months" is `RoundVesting.MIN_DURATION`, so an authorised round
-cannot quietly set one second. "2,000,000 per seat" is `MAX_PER_SEAT`.
-"30M sale ceiling" is `MAX_TOTAL`. **The only promises worth making are
-the ones the contract cannot break.**
+"Six months" is `SaleVesting.MIN_DURATION`, so an authorised sale cannot
+quietly grant over one second. "2,000,000 per seat" is `MAX_PER_SEAT`.
+"60M sale allocation" is `MAX_TOTAL`. "One price, for everyone" is
+`bonaPerUsdc` being `immutable`. **The only promises worth making are the
+ones the contract cannot break.**
 
 ### 4. A power that can stall must not be a power to keep
 
-Settlement needs a multisig vote, so a stalled multisig could otherwise
-strand buyers. `SETTLEMENT_GRACE` (30 days) turns an unsettled successful
-round refundable. `markFailed()` is permissionless. A late claimer past
-the backdate window is clamped, not blocked.
+The multisig can stop the sale — by taking back reserved capacity or
+unsold tokens — but it cannot take back capacity a sale has committed to
+buyers it has already accepted. It can end the sale; it cannot strand
+someone inside it.
 
 ---
 
@@ -97,11 +102,14 @@ budget, never a fresh allocation.
 > unlock half of it instantly. Every tranche here is an independent grant
 > with its own start, and a test asserts a new tranche begins at 0%.
 
-**RoundVesting** — granters must be **contracts** (an EOA granter is one
-key against the whole sale pool) and must be authorised by the multisig.
-`MIN_DURATION` enforces the six months. `MAX_BACKDATE` (30 days) lets
-buyers vest from the round's close without letting a granter hand over
-pre-vested tokens. `revokeGranter` stops future grants only.
+**SaleVesting** — granters must be **contracts** (an EOA granter is one
+key against the whole sale pool) and are given a *reservation* rather than
+a flag. `grant` draws only against the caller's own reservation, so no
+sale can be starved by another's activity and the 60M cap is enforced once,
+at reservation time, where a mistake is still free to fix. A granter that
+carries an obligation across two transactions declares it with `commit`,
+and the funder cannot release capacity below that floor. A beneficiary
+holds at most 500 grants, so summing them always fits in a block.
 
 **RequestBacking** — anyone opens a request; unbacked ones score zero, so
 spam self-filters. Backing locks tokens that only ever return to the
@@ -111,16 +119,20 @@ quadratic score is computed off-chain because it is counted per member
 *account*, and accounts are off-chain; the contract's job is to be the
 complete public record of the inputs, including distinct backer counts.
 
-**SaleRound** — everything that matters is `immutable`: both prices, the
-goal, the floor, the deadline, the reference price. Progress is accounted
-**in BONA rather than USD**, so a broken oracle can never corrupt the
-goal, floor or refund arithmetic. The Chainlink feed answers exactly one
-question — is the ETH lane within ±20% of the published reference — and
-**fails closed**: stale, non-positive or reverting data shuts the ETH
-lane while USDC keeps running. It can close a lane; it can never open one
-and it never sets a price. `reclaimUnsold()` is bounded to the balance
-minus everything owed to buyers, so it cannot reach a buyer's tokens in
-any state, at any time.
+**DirectSale** — `bonaPerUsdc`, `maxBona` and `vestingDuration` are all
+`immutable`. The buyer's USDC goes straight to the multisig, so this
+contract never holds a dollar and there is no balance for anyone to argue
+about. What it can sell is bounded three separate ways: its own lifetime
+ceiling, the BONA it currently holds, and the capacity reserved for it.
+`reclaimUnsold()` can take the entire balance precisely because a purchase
+moves the buyer's tokens out in the same transaction — nothing held here
+is ever owed.
+
+> **Repricing is a redeployment.** The price cannot be changed, so a new
+> price means a new contract: reclaim, release the reservation, deploy,
+> reserve again. Every price the project has ever offered therefore stays
+> on-chain as its own permanent, immutable record, which is a better audit
+> trail than one address whose price history has to be taken on trust.
 
 ---
 
@@ -132,6 +144,7 @@ any state, at any time.
 | Member accounts | Email-gated downloads — nothing to prove on-chain |
 | Proposals and votes | Off-chain voting, because free voting is the point |
 | Request text | Only its hash is on-chain; the text lives on the site |
+| The 20/70/10 split of proceeds | A treasury spending policy, not something a contract enforces. Published with every transaction hash, and honest about being a policy |
 
 ## Known weaknesses
 
@@ -146,8 +159,8 @@ Stated here rather than discovered later. Full detail in
 
 ## The test suite is a claim registry
 
-187 tests. The convention: **every safety claim made in these documents
+150 tests. The convention: **every safety claim made in these documents
 or on the website has a test here**, and the forbidden-function tests
 inspect the compiled ABI, so the claim is about the artifact rather than
 the intent. If a test is removed, the public claim it backs must be
-removed in the same commit.
+removed in the same commit — and CI fails the build until it is.

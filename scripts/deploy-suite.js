@@ -4,11 +4,11 @@
  * Deploys the three long-lived contracts around the token:
  *
  *   TeamVesting     team allocation, 5 seats, no revoke
- *   RoundVesting    buyer grants, 6-month lock enforced
+ *   SaleVesting     buyer grants, 6-month lock enforced, capacity reserved
  *   RequestBacking  lock BONA behind a request
  *
- * SaleRound is NOT deployed here — one is deployed per round, later, by
- * scripts/deploy-round.js.
+ * DirectSale is NOT deployed here — it is deployed separately, later, by
+ * scripts/deploy-sale.js.
  *
  * Usage:
  *   $env:DEPLOYER_PRIVATE_KEY = "0x..."
@@ -91,7 +91,7 @@ async function main() {
   // --- Deploy --------------------------------------------------------------
   const deployed = {};
 
-  for (const name of ["TeamVesting", "RoundVesting", "RequestBacking"]) {
+  for (const name of ["TeamVesting", "SaleVesting", "RequestBacking"]) {
     process.stdout.write(`  Deploying ${name} ... `);
     const Factory = await ethers.getContractFactory(name);
     const contract = await Factory.deploy(tokenAddress, admin);
@@ -102,7 +102,7 @@ async function main() {
 
   // --- Sanity: read back the immutables ------------------------------------
   const teamVesting = await ethers.getContractAt("TeamVesting", deployed.TeamVesting);
-  const roundVesting = await ethers.getContractAt("RoundVesting", deployed.RoundVesting);
+  const saleVesting = await ethers.getContractAt("SaleVesting", deployed.SaleVesting);
   const backing = await ethers.getContractAt("RequestBacking", deployed.RequestBacking);
 
   // Public RPCs are load-balanced; retry briefly if the answering node has
@@ -111,8 +111,8 @@ async function main() {
     return [
     ["TeamVesting.funder", await teamVesting.funder(), admin],
     ["TeamVesting.token", await teamVesting.token(), tokenAddress],
-    ["RoundVesting.funder", await roundVesting.funder(), admin],
-    ["RoundVesting.token", await roundVesting.token(), tokenAddress],
+    ["SaleVesting.funder", await saleVesting.funder(), admin],
+    ["SaleVesting.token", await saleVesting.token(), tokenAddress],
     ["RequestBacking.curator", await backing.curator(), admin],
     ["RequestBacking.token", await backing.token(), tokenAddress],
     ];
@@ -176,8 +176,8 @@ async function main() {
 
   console.log("\n  Next steps:");
   console.log("    1. scripts/team-seats.js       — assign the five seats");
-  console.log("    2. scripts/deploy-round.js     — when the first round is voted open");
-  console.log("    3. Snapshot two-strategy setup — MUST be live before round one");
+  console.log("    2. scripts/deploy-sale.js      — deploy the sale at the published price");
+  console.log("    3. Snapshot strategy update    — MUST be live before the sale opens");
   console.log("");
 }
 
