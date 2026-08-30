@@ -8,3 +8,6 @@ artifacts/
 cache/
 coverage/
 typechain-types/
+
+# CI artefact
+test-output.txt

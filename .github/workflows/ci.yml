@@ -1,0 +1,65 @@
+# Every claim in this repository is meant to be checkable. This workflow is
+# what makes that true of the repository itself: the suite runs on every push
+# and every pull request, and the build fails if a published test count no
+# longer matches the suite that backs it.
+#
+# The convention used to read "if a test is removed, the claim it backs must be
+# removed in the same commit". That was a promise. This is the enforcement.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Tests and published claims
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install
+        run: npm ci
+
+      - name: Compile
+        run: npx hardhat compile
+
+      - name: Test
+        run: npx hardhat test | tee test-output.txt
+
+      - name: Published test counts must match the suite
+        run: node tools/verify-claims.js test-output.txt
+
+  slither:
+    name: Static analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install
+        run: npm ci
+
+      # Fails the build on a High-impact finding only. Medium and below are
+      # triaged by hand and their reasoning is published in docs/audit-status.md
+      # — a build that fails on informational noise is a build nobody reads.
+      - uses: crytic/slither-action@v0.4.0
+        with:
+          node-version: '20'
+          fail-on: high
+          slither-args: --filter-paths "node_modules|contracts/test"

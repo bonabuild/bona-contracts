@@ -1,5 +1,7 @@
 # BONA — contracts
 
+[![CI](https://github.com/bonabuild/bona-contracts/actions/workflows/ci.yml/badge.svg)](https://github.com/bonabuild/bona-contracts/actions/workflows/ci.yml)
+
 The smart contracts behind [BonaBuild](https://bonabuild.org), and the
 tests that prove what they can and cannot do.
 
@@ -70,6 +72,13 @@ The convention this project holds itself to: **every safety claim made on
 the website has a test here.** If a test is deleted, the claim it backs
 must be deleted in the same commit.
 
+That used to be a promise. It is now enforced: CI runs the suite on every
+push and every pull request, reads the real passing count, and **fails the
+build if any published number in this repository disagrees with it**
+(`tools/verify-claims.js`). A second job runs Slither and fails on any
+High-impact finding. So the badge above is not decoration — a red badge
+means a claim on this page is currently false.
+
 ### Run the tests
 
 ```bash
@@ -124,9 +133,10 @@ and this project does not describe them as open source.
 
 ## BONA is not an investment
 
-BONA funds development and directs what gets built next. It is not a
-share, it carries no claim on revenue, and it comes with no promise of
-return. There is no buy-back and no price floor — not as policy, but as
+BonaBuild writes the software and gives it away; that does not depend on
+BONA. Sale rounds add capacity — more built, sooner — and backing directs
+what gets built next. BONA is not a share, it carries no claim on revenue,
+and it comes with no promise of return. There is no buy-back and no price floor — not as policy, but as
 a rule this project does not break.
 
 If you ever pay for BONA: **you may lose the entire amount you pay.**
