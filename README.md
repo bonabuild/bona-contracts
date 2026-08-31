@@ -19,10 +19,16 @@ hold it in vesting, and the contract that sells it.
 | **BonaToken** | `0xC0833296346D7a699949B5DF547279b1641Ea2cd` | [source ↗](https://basescan.org/address/0xC0833296346D7a699949B5DF547279b1641Ea2cd#code) |
 | TeamVesting | `0xEf05C6Ce1C47118d411a3C1D8FEcC128dcF87229` | [source ↗](https://basescan.org/address/0xEf05C6Ce1C47118d411a3C1D8FEcC128dcF87229#code) |
 | RequestBacking | `0xbFB03dfb3cC04C95ff4a92F4866F1D9396F4b7E4` | [source ↗](https://basescan.org/address/0xbFB03dfb3cC04C95ff4a92F4866F1D9396F4b7E4#code) |
+| SaleVesting | `0x51f748210D3d6D409f95325e2F9ef9C5Ea590F41` | [source ↗](https://basescan.org/address/0x51f748210D3d6D409f95325e2F9ef9C5Ea590F41#code) |
+| **DirectSale** | `0xc552c1eE35629d29e9A7d73b1deb14cfea433881` | [source ↗](https://basescan.org/address/0xc552c1eE35629d29e9A7d73b1deb14cfea433881#code) |
 
-**`SaleVesting` and `DirectSale` are written and tested but not deployed.**
-They are the two contracts a buyer would interact with, so they are the two
-most worth reviewing while a finding is still free to act on.
+**The sale is deployed but not open.** `DirectSale` holds no BONA and has
+no reserved capacity, so `buy()` reverts for everyone, including us. It
+opens when the multisig funds an instalment and reserves matching capacity —
+two ordinary transactions, both public when they happen.
+
+These are the two contracts a buyer would interact with, so they are the two
+most worth reviewing. Nothing is at stake in them yet.
 
 > A fourth address, `0xdaAF…5976`, is a superseded vesting contract from
 > development. It holds nothing and will never be used. It stays on-chain

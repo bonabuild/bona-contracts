@@ -9,9 +9,9 @@ you put money anywhere near them.**
 
 | | |
 |---|---|
-| External professional audit | ❌ **Not done** |
+| Published audit report | ❌ **None yet** — the next review's report goes here |
 | Independent review | ✅ Done — findings addressed |
-| Second review | ⏳ Arranged, not yet complete |
+| Second review | ⏳ Arranged, report to be published |
 | Automated test suite | ✅ 150 tests |
 | Full buyer-path rehearsal on Base Sepolia | ✅ 25 of 28 steps; the other 3 need time travel |
 | Static analysis on every push | ✅ Build fails on any High finding |
@@ -22,10 +22,11 @@ None of this replaces an audit. It is what can be done without one.
 ## What is deployed, and what is not
 
 `DirectSale` and `SaleVesting` — the two contracts a buyer would touch —
-are **not deployed**. What is on-chain today holds no third-party money:
-the entire supply sits in the project multisig, team vesting is funded by
-the multisig to the team's own addresses, and request backing locks tokens
-that only ever return to whoever locked them.
+are deployed but **not armed**. The sale holds no BONA and has no reserved
+capacity, so `buy()` reverts for everyone. Nothing on-chain today holds
+third-party money: the entire supply sits in the project multisig, team
+vesting is funded by the multisig to the team's own addresses, and request
+backing locks tokens that only ever return to whoever locked them.
 
 That is where the gate sits. In front of buyers' funds, not in front of
 our own.
@@ -76,10 +77,47 @@ find one. Static analysis is worth having and it is not worth trusting.
 
 An independent review has been carried out and everything it raised has
 been addressed — in two cases by changing the design rather than patching
-around it. A second review is arranged.
+around it. A second review is arranged, and **its report will be published
+here when it completes.**
 
-Neither is an audit, and the line at the top of this page does not move
-until one has been published here.
+Until that report exists there is nothing for you to read, which is why the
+line at the top of this page is worded the way it is. A review someone else
+cannot check is a claim, not evidence, and this project does not ask to be
+taken at its word for anything it can hand you instead.
+
+---
+
+## The compiler warnings on Basescan
+
+Basescan lists known bugs for whichever compiler version a contract
+declares, without looking at the contract. Solidity 0.8.24 carries two, so
+they appear on all of ours. Neither can occur here, and the reasons are
+checkable rather than reassuring.
+
+**`UnsoundSpillInMutualRecursion`** (medium, introduced 0.7.2, fixed
+0.8.36). Local variables of mutually recursive functions can be moved to
+fixed memory offsets and overwritten across calls. The bug entry carries a
+condition: `viaIR: true`. This project does not enable the IR pipeline —
+see `hardhat.config.js` — so the condition is not met and the bug cannot be
+present in the deployed bytecode. Separately, it needs mutual recursion,
+and no function in these contracts calls itself or another one in a cycle.
+
+**`LostStorageArrayWriteOnSlotOverflow`** (low, introduced 0.1.0, fixed
+0.8.32). Clearing or copying an array whose slots wrap past the end of
+storage can silently leave data behind. Two things are needed and neither
+is present:
+
+| Required | Here |
+|---|---|
+| An array long enough to wrap the 2²⁵⁶ slot space | Grants are capped at 500 per address; the rest are bounded by supply |
+| A clear or copy operation | There is no `delete` and no `.pop()` anywhere — arrays are only pushed to and read |
+
+**We are not upgrading the compiler to silence these.** `BonaToken` is
+deployed and its compiler version can never change, so the warning would
+remain on the contract that matters most while the rest of the system moved
+to a less-exercised compiler — two versions on-chain, no risk removed.
+0.8.24 was chosen because Base runs Cancun opcodes and OpenZeppelin v5 uses
+`mcopy`, and that reason has not changed.
 
 ---
 

@@ -21,15 +21,17 @@ None of these replace an audit. They are what could be done without one.
 
 ## Scope
 
-**Highest priority — written, tested, not yet deployed:**
+**Highest priority — deployed, but holding nothing yet:**
 
-| Contract | Why it matters most |
-|---|---|
-| `DirectSale.sol` | Takes buyers' money |
-| `SaleVesting.sol` | Holds buyers' tokens for six months |
+| Contract | Address | Why it matters most |
+|---|---|---|
+| `DirectSale` | `0xc552c1eE35629d29e9A7d73b1deb14cfea433881` | Takes buyers' money |
+| `SaleVesting` | `0x51f748210D3d6D409f95325e2F9ef9C5Ea590F41` | Holds buyers' tokens for six months |
 
-These two are the ones to read first. They are not on-chain yet, so a
-finding here is still a commit rather than an incident.
+Read these two first. The sale is not open: it holds no BONA and has no
+reserved capacity, so every `buy()` reverts. A finding today is still a
+commit rather than an incident, and that window closes the moment the
+multisig arms it.
 
 **Also in scope** — deployed on Base mainnet (chain ID 8453):
 
