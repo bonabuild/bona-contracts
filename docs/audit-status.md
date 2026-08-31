@@ -13,6 +13,7 @@ below, including the two that changed the design.**
 | Independent review | ✅ Done — three findings, all acted on |
 | Second review | ⏳ Arranged, not yet complete |
 | Automated test suite | ✅ 150 tests |
+| Full buyer-path rehearsal on Base Sepolia | ✅ 25 of 28 steps; the other 3 need time travel |
 | Static analysis (Slither) on every push | ✅ Build fails on any High finding |
 | Source verified on Basescan | ✅ All deployed contracts |
 
@@ -100,6 +101,28 @@ choice. A pause is a lever, and a lever that can stop a sale can also hold
 one hostage. Stopping the sale is done instead with two ordinary
 transactions that carry no special privilege: the multisig takes back the
 sale's reserved capacity, or its BONA balance, or both.
+
+---
+
+## The rehearsal
+
+`scripts/e2e-sale.js` deploys the whole system to a real chain, arms it the
+way the multisig will, and walks the buyer path end to end. It ran on Base
+Sepolia at 25 of 28 steps; the three it skips fast-forward six months, which
+only a local chain allows.
+
+The steps worth naming are the ones that are supposed to fail. It buys from
+a sale with no tokens, from a sale with tokens but no reserved capacity,
+below the minimum, beyond the reservation, and after the multisig has taken
+the capacity back — and after each one it checks the buyer's USDC balance is
+untouched. A rehearsal that only walks the happy path proves the least
+interesting thing about a contract that handles other people's money.
+
+It also runs the three roles as three different addresses. The first live
+run did not, because a testnet hands you one funded key, and three checks
+passed for the wrong reason: "the money reached the treasury" cannot fail
+when the treasury is the buyer. The script now creates and funds the other
+two keys itself.
 
 ---
 

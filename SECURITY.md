@@ -12,6 +12,7 @@ What was done instead — all published, all reproducible:
 | Mitigation | Where |
 |---|---|
 | 150 automated tests, including tests asserting the *absence* of mint / owner / pause / blacklist | `test/` — run `npm test` |
+| A 28-step rehearsal of the whole buyer path, run on Base Sepolia | `scripts/e2e-sale.js` |
 | An independent review, with all three findings and what changed | [`docs/audit-status.md`](docs/audit-status.md) |
 | Static analysis on every push, failing the build on High findings | `.github/workflows/ci.yml` |
 | Verified source on Basescan, byte for byte | links in the README |
