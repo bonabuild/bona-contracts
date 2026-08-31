@@ -98,14 +98,19 @@ would rather have it in the open.
   do not exfiltrate data or disrupt other users, and give us a reasonable
   window before publishing.
 
-## What we do not commit to
+## The bounty
 
-**There is no funded bug bounty yet.** 15% of supply is allocated to
-contributor programs, and a published bounty schedule is the first thing
-it is for — severity bands and amounts fixed in advance, so what a finding
-is worth is decided before it is found rather than after. Until that
-schedule is published, treat this as intent rather than a rate card.
+**There is a published schedule**, with severity bands and amounts fixed in
+advance: [`docs/bounty.md`](docs/bounty.md). What a finding is worth is
+settled before it is found, because settling it afterwards puts the
+negotiation in the hands of the party with an interest in calling the bug
+small.
 
-Two things about it stated plainly now rather than discovered later: any
-payment would be made in BONA, which has no market and no exit today; and
-this paragraph changes only when the schedule exists, here, in this file.
+Two things stated here rather than left to be discovered: payment is in
+**BONA, which has no market and no way to sell it today**, and the top band
+tracks the amount actually at risk in the sale rather than staying flat
+while the exposure changes.
+
+Ties between bands go **up**. Every payment is published with the finding,
+the band, and the reasoning — including the ones where the reasoning looks
+bad for us.

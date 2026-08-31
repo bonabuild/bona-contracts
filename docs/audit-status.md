@@ -15,6 +15,7 @@ you put money anywhere near them.**
 | Automated test suite | ✅ 150 tests |
 | Full buyer-path rehearsal on Base Sepolia | ✅ 25 of 28 steps; the other 3 need time travel |
 | Static analysis on every push | ✅ Build fails on any High finding |
+| Published bug bounty schedule | ✅ [`bounty.md`](bounty.md) — bands fixed in advance |
 | Source verified on Basescan | ✅ All deployed contracts |
 
 None of this replaces an audit. It is what can be done without one.
