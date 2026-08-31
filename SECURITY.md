@@ -13,7 +13,7 @@ What was done instead — all published, all reproducible:
 |---|---|
 | 150 automated tests, including tests asserting the *absence* of mint / owner / pause / blacklist | `test/` — run `npm test` |
 | A 28-step rehearsal of the whole buyer path, run on Base Sepolia | `scripts/e2e-sale.js` |
-| An independent review, with all three findings and what changed | [`docs/audit-status.md`](docs/audit-status.md) |
+| An independent review, with everything it raised addressed | [`docs/audit-status.md`](docs/audit-status.md) |
 | Static analysis on every push, failing the build on High findings | `.github/workflows/ci.yml` |
 | Verified source on Basescan, byte for byte | links in the README |
 
@@ -43,9 +43,9 @@ And everything in `scripts/`. A script that prints wrong multisig calldata
 is a real vulnerability, not a convenience bug.
 
 **Out of scope:** third-party infrastructure we do not control (the Base
-sequencer, RPC providers, Snapshot, USDC itself), the retired
-`RoundVesting` at `0xdaAF…5976` which holds nothing and will never be
-used, and the known weaknesses below.
+sequencer, RPC providers, Snapshot, USDC itself), the superseded vesting
+contract at `0xdaAF…5976` which holds nothing and will never be used, and
+the known weaknesses below.
 
 ## Known and accepted — please don't file these as new
 
@@ -89,8 +89,7 @@ would rather have it in the open.
 - **Acknowledgement within 72 hours.** If you don't get one, the mail did
   not arrive — say so publicly and treat that as our failure, not yours.
 - **We publish the finding, the fix, and the timeline**, including our
-  own mistakes, whether or not it was exploited. The three findings in
-  `docs/audit-status.md` are there because of this, not despite it.
+  own mistakes, whether or not anything was exploited.
 - **Credit by name or handle, or anonymity** — your choice.
 - **Safe harbour.** No legal action against anyone acting in good faith
   under this policy: test against the addresses above or your own fork,

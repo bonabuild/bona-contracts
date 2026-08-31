@@ -24,13 +24,9 @@ hold it in vesting, and the contract that sells it.
 They are the two contracts a buyer would interact with, so they are the two
 most worth reviewing while a finding is still free to act on.
 
-> **One address is retired.** `0xdaAFEFfBA13f0573609575Ee028621C812eD5976` is
-> an earlier vesting contract, `RoundVesting`. It holds nothing, granted
-> nothing, and will never be used: an external review found that its capacity
-> cap was checked at grant time rather than reserved in advance, which could
-> have left a buyer paid-up and unable to claim. `SaleVesting` replaces it.
-> The address stays on-chain and verified because deleting history is not
-> available to anyone, including us.
+> A fourth address, `0xdaAF…5976`, is a superseded vesting contract from
+> development. It holds nothing and will never be used. It stays on-chain
+> and verified because nothing on a blockchain can be taken back.
 
 The entire supply — 100,000,000 BONA, fixed — is held by the project
 multisig at
@@ -117,10 +113,10 @@ instalment.
 These contracts have **not been through a professional external audit.**
 Some of them are deployed on mainnet and hold real value.
 
-An independent review has been carried out and its three findings are
-described in [`docs/audit-status.md`](docs/audit-status.md), along with
-what changed in response. A second review is planned. Neither replaces an
-audit, and this section will not change until one has been published.
+An independent review has been carried out and everything it raised has
+been addressed; a second is arranged. Neither replaces an audit, and this
+section does not change until one has been published. Full status:
+[`docs/audit-status.md`](docs/audit-status.md).
 
 **Review of `DirectSale.sol` and `SaleVesting.sol` is especially welcome.**
 They are the contracts that will handle buyers' money, and they are not

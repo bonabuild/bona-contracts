@@ -46,11 +46,11 @@ the source.
 
 ### 2. Design the failure case out, don't guard it
 
-The clearest example is the one an external review handed us. A sale that
-takes payment in one transaction and writes the buyer's vesting grant in
-another can fail in between, and when it does, the money is gone and the
-tokens are unreachable. Two of that review's three findings were instances
-of exactly that shape.
+The clearest example is the sale. A contract that takes payment in one
+transaction and writes the buyer's vesting grant in another can fail in
+between, and when it does the money is gone and the tokens are unreachable.
+Every guard you could add is a guard against a window that did not have to
+exist.
 
 `DirectSale` writes the grant in the same call as the payment. Either both
 happen or neither does. The failure is not guarded against; there is
