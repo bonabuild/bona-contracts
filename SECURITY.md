@@ -111,6 +111,7 @@ Two things stated here rather than left to be discovered: payment is in
 tracks the amount actually at risk in the sale rather than staying flat
 while the exposure changes.
 
-Ties between bands go **up**. Every payment is published with the finding,
-the band, and the reasoning — including the ones where the reasoning looks
-bad for us.
+Ties between bands go **up**. Every payment is published in
+[`docs/contributors.md`](docs/contributors.md) with the finding, the band,
+and the transaction that paid it — including the ones where the reasoning
+looks bad for us.

@@ -130,13 +130,13 @@ with.
 ## What gets published
 
 Every payment: what was found, which band, what was paid, and the
-transaction hash. Credit by name or handle, or anonymity — the reporter
+transaction hash — in [`contributors.md`](contributors.md), which exists
+already and is empty, so the format was fixed before there was anything to
+present favourably. Credit by name or handle, or anonymity — the reporter
 chooses, and the choice is respected in the write-up.
 
 Findings are published whether or not they were exploited, and whether or
-not they make us look careless. The two High-severity issues an
-independent review found in an earlier vesting contract are in
-[`audit-status.md`](audit-status.md) for the same reason.
+not they make us look careless.
 
 ---
 
